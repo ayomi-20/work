@@ -9,20 +9,20 @@ class Author(db.Model):
     lname = db.Column(db.String(100),nullable = False)
     contact = db.Column(db.String(10),nullable = False, unique = True)
     email = db.Column(db.String(85),nullable = False, unique = True)
-    password = db.Column(db.String(20),nullable = False)
+    password = db.Column(db.String(255),nullable = False)
     biography = db.Column(db.String(255),nullable = True)
     created_at = db.Column(db.DateTime, default = datetime.now)
     updated_at = db.Column(db.DateTime, onupdate = datetime.now)
 
 
-    def __init__(self,fname,lname,email,contact,author_id,biography,password,created_at,updated_at):
+    def __init__(self,fname,lname,email,contact,biography,password,created_at,updated_at):
         super(Author, self).__init__() #invoking the constructor of the super class
         self.fname = fname
         self.lname = lname
         self.contact = contact
         self.email = email
         self.password =  password
-        self.author_id = author_id
+        # self.author_id = author_id
         self.created_at = created_at
         self.updated_at = updated_at
         self.biography = biography

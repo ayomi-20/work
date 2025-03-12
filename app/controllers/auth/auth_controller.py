@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
-from app.status_codes import HTTP_400_BAD_REQUEST,HTTP_409_CONFLICT,HTTP_500_INTERNAL_SERVER_ERROR,HTTP_201_CREATED
+from app.status_codes import HTTP_400_BAD_REQUEST,HTTP_409_CONFLICT,HTTP_500_INTERNAL_SERVER_ERROR,HTTP_201_CREATED,HTTP_401_UNAUTHORIZED,HTTP_200_OK
 import validators
 from app.models.author_module import Author
 from app.extensions import db,bcrypt
+from flask_jwt_extended import create_access_token
 
 #auth blueprint
 auth = Blueprint('auth', __name__,
@@ -46,9 +47,11 @@ def register_user():
         return jsonify({"Error":"Contact is already in use"}),HTTP_409_CONFLICT
     
     try:
-        hashed_password = bcrypt.generate_password_hash(password) #hashing the password
+        # hashed_password = bcrypt.generate_password_hash(password).decode("utf-8") #hashing the password
+        hashed_password = bcrypt.generate_password_hash(password).decode("utf-8")  # Correct way to hash the password
+
         #creating an Author
-        new_author = Author(author_id=id,fname=fname,lname=lname,password=hashed_password,email=email,contact=contact,biography=biography,created_at=created_at,updated_at=updated_at)
+        new_author = Author(fname=fname,lname=lname,password=hashed_password,email=email,contact=contact,biography=biography,created_at=created_at,updated_at=updated_at)
         db.session.add(new_author)
         db.session.commit()
 
@@ -72,3 +75,49 @@ def register_user():
     except Exception as e:
         db.session.rollback()
         return jsonify({"Error":str(e)}),HTTP_500_INTERNAL_SERVER_ERROR
+    
+
+
+
+#user login
+@auth.post('/login')
+def login():
+
+
+    email = request.json.get("email")
+    password = request.json.get("password")
+
+    try:
+        if not password or not email:
+            return jsonify({"Message":"Email and password are required"}),HTTP_400_BAD_REQUEST
+        
+        author = Author.query.filter_by(email=email).first()
+        if author:
+            # is_correct_password = bcrypt.check_password_hash(author.password,password)
+            if bcrypt.check_password_hash(author.password, password):  # bcrypt's method
+                access_token = create_access_token(identity=author.author_id)
+
+            # if is_correct_password:
+            #     access_token = create_access_token(identity=author.author_id)
+
+                return jsonify({
+                "author":{
+                 "author_id":author.author_id,
+                 "authorname":author.get_full_name(),
+                 "email":author.email,
+                 "access_token":access_token
+                }    
+                }),HTTP_200_OK
+            else:
+                return jsonify({
+                 "Message":"Invalid password"   
+                }),HTTP_401_UNAUTHORIZED
+
+        else:
+            return jsonify({"Message":"Invalid email address"}),HTTP_401_UNAUTHORIZED
+
+
+    except Exception as e:
+        return  jsonify({
+            "Error":str(e)
+        }), HTTP_500_INTERNAL_SERVER_ERROR
